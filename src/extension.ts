@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 export function activate(context: vscode.ExtensionContext) {
     // Crée un nouvel élément de status bar
     const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-    // statusBarItem.tooltip = "Cliquez pour gérer le minuteur";
+    statusBarItem.tooltip = "Cliquez pour gérer le minuteur";
     statusBarItem.command = "extension.manageTimer"; // Commande associée au clic
     statusBarItem.show(); // Affiche l'élément
 
@@ -11,18 +11,18 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(statusBarItem);
 
     // Commande pour gérer le minuteur
-	let mainTimer = Date.now();
+    let mainTimer = Date.now();
     let countdownTime = 0;
-	let toDisplay = 'timer';
-
+    let toDisplay = 'elapsed';
+    let isCountdownActive = false;
 
     const manageTimerDisposable = vscode.commands.registerCommand('extension.manageTimer', async () => {
         const options: vscode.QuickPickItem[] = [
             { label: 'Réinitialiser le compteur' },
             { label: 'Ajouter un nouveau minuteur' },
-			{ label: 'Arrêter le minuteur' },
-			{ label: 'Reprendre le minuteur' },
-			{ label: 'Switch affichage'}
+            { label: 'Arrêter le minuteur' },
+            { label: 'Reprendre le minuteur' },
+            { label: 'Switch affichage' }
         ];
         const selection = await vscode.window.showQuickPick(options, {
             placeHolder: 'Choisissez une action'
@@ -35,6 +35,8 @@ export function activate(context: vscode.ExtensionContext) {
         if (selection.label === 'Réinitialiser le compteur') {
             mainTimer = Date.now();
             countdownTime = 0;
+            isCountdownActive = false;
+            toDisplay = 'elapsed';
             vscode.window.showInformationMessage('Minuteur réinitialisé !');
         } else if (selection.label === 'Ajouter un nouveau minuteur') {
             const input = await vscode.window.showInputBox({
@@ -44,38 +46,35 @@ export function activate(context: vscode.ExtensionContext) {
                     return isNaN(num) || num <= 0 ? 'Veuillez entrer un nombre valide d\'heures' : null;
                 }
             });
+
             if (input) {
                 const hours = Number(input);
                 countdownTime = hours * 3600 * 1000; // Convertir les heures en millisecondes
                 mainTimer = Date.now();
+                isCountdownActive = true;
+                toDisplay = 'remaining';
                 vscode.window.showInformationMessage(`Minuteur défini pour ${hours} heures.`);
             }
         } else if (selection.label === 'Arrêter le minuteur') {
-			if (countdownTime === 0) {
-				vscode.window.showInformationMessage('Aucun minuteur en cours !');
-				return;
-			} else {
-				countdownTime = Date.now() - mainTimer;
-				vscode.window.showInformationMessage('Minuteur arrêté !');
-			}
-		} else if (selection.label === 'Reprendre le minuteur') {
-			if (countdownTime === 0) {
-				vscode.window.showInformationMessage('Aucun minuteur en cours !');
-				return;
-			} else {
-				mainTimer = Date.now() - countdownTime;
-				vscode.window.showInformationMessage('Minuteur repris !');
-			}
-		}
-		else if (selection.label === 'Switch affichage') {
-			if (toDisplay === 'remaining') {
-				toDisplay = 'elapsed';
-				vscode.window.showInformationMessage('Affichage du temps écoulé !');
-			} else {
-				toDisplay = 'remaining';
-				vscode.window.showInformationMessage('Affichage du temps restant !');
-			}
-		}
+            if (isCountdownActive) {
+                countdownTime -= Date.now() - mainTimer;
+                isCountdownActive = false;
+                vscode.window.showInformationMessage('Minuteur arrêté !');
+            } else {
+                vscode.window.showInformationMessage('Aucun minuteur en cours !');
+            }
+        } else if (selection.label === 'Reprendre le minuteur') {
+            if (!isCountdownActive && countdownTime > 0) {
+                mainTimer = Date.now();
+                isCountdownActive = true;
+                vscode.window.showInformationMessage('Minuteur repris !');
+            } else {
+                vscode.window.showInformationMessage('Aucun minuteur à reprendre !');
+            }
+        } else if (selection.label === 'Switch affichage') {
+            toDisplay = toDisplay === 'elapsed' ? 'remaining' : 'elapsed';
+            vscode.window.showInformationMessage(`Affichage basculé à ${toDisplay === 'elapsed' ? 'temps écoulé' : 'temps restant'}.`);
+        }
     });
 
     context.subscriptions.push(manageTimerDisposable);
@@ -95,7 +94,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
-	setInterval(() => {
+    setInterval(() => {
         const elapsedTime = Date.now() - mainTimer;
         if (toDisplay === 'remaining' && countdownTime > 0) {
             const remainingTime = countdownTime - elapsedTime;
@@ -103,9 +102,12 @@ export function activate(context: vscode.ExtensionContext) {
                 statusBarItem.text = `$(clock) ${formatTime(remainingTime)}`;
             } else {
                 statusBarItem.text = `$(clock) Temps écoulé !`;
-				vscode.window.showInformationMessage('Le minuteur est terminé !');
+                if (isCountdownActive) {
+                    vscode.window.showInformationMessage('Le minuteur est terminé !');
+                    isCountdownActive = false;
+                }
             }
-        } else {
+        } else if (toDisplay === 'elapsed') {
             statusBarItem.text = `$(clock) ${formatTime(elapsedTime)}`;
         }
     }, 1000);

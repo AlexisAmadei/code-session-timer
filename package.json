@@ -2,10 +2,12 @@
   "name": "code-session-timer",
   "displayName": "Code session timer",
   "description": "",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.95.0"
   },
+  "icon": "icon/icon_clock.png",
+  "publisher": "kiwidev",
   "categories": [
     "Other"
   ],

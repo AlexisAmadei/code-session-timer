@@ -1,0 +1,28 @@
+# Node modules
+node_modules
+
+# Build output
+dist
+out
+
+# VS Code workspace settings
+.vscode
+
+# Logs
+*.log
+
+# TypeScript cache
+*.tsbuildinfo
+
+# npm debug log
+npm-debug.log*
+
+# Yarn debug log
+yarn-debug.log*
+yarn-error.log*
+
+# Mac system files
+.DS_Store
+
+# Windows system files
+Thumbs.db
